@@ -221,6 +221,12 @@ public class AccountsController {
     )
     @GetMapping("/contact-info")
     public ResponseEntity<AccountsContactInfoDto> getContactInfo() {
+        /*
+            Below log statement for testing the retry pattern
+            which is implementing in gatewayserver feature/9-retry-pattern-support of gatewayserver.
+            Global http timeout also enabled.
+        */
+        logger.debug("Invoked Accounts contact-info API");
         return ResponseEntity
                 .status(HttpStatus.OK)
                 .body(accountsContactInfoDto);
