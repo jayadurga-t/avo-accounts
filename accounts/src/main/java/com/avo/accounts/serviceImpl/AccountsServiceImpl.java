@@ -2,6 +2,7 @@ package com.avo.accounts.serviceImpl;
 
 import com.avo.accounts.constants.AccountsConstants;
 import com.avo.accounts.dto.AccountsDto;
+import com.avo.accounts.dto.AccountsMsgDto;
 import com.avo.accounts.dto.CustomerDto;
 import com.avo.accounts.entity.Accounts;
 import com.avo.accounts.entity.Customer;
@@ -13,6 +14,9 @@ import com.avo.accounts.repository.AccountsRepository;
 import com.avo.accounts.repository.CustomerRepository;
 import com.avo.accounts.service.IAccountsService;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.cloud.stream.function.StreamBridge;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -24,8 +28,11 @@ import java.util.function.Supplier;
 @AllArgsConstructor
 public class AccountsServiceImpl implements IAccountsService {
 
+    private static final Logger log = LoggerFactory.getLogger(AccountsServiceImpl.class);
+
     private AccountsRepository accountsRepository;
     private CustomerRepository customerRepository;
+    private final StreamBridge streamBridge;
 
     @Override
     public void createAccount(CustomerDto customerDto) {
@@ -38,8 +45,16 @@ public class AccountsServiceImpl implements IAccountsService {
         }
 
         Customer savedCustomer = customerRepository.save(customer);
-        accountsRepository.save(createNewAccount(savedCustomer));
+        Accounts savedAccount = accountsRepository.save(createNewAccount(savedCustomer));
+        sendCommunication(savedAccount, savedCustomer);
+    }
 
+    private void sendCommunication(Accounts account, Customer customer) {
+        var accountsMsgDto = new AccountsMsgDto(account.getAccountNumber(), customer.getName(),
+                customer.getEmail(), customer.getMobileNumber());
+        log.info("Sending Communication request for the details: {}", accountsMsgDto);
+        var result = streamBridge.send("sendCommunication-out-0", accountsMsgDto);
+        log.info("Is the Communication request successfully triggered ? : {}", result);
     }
 
     public Accounts createNewAccount(Customer customer){
